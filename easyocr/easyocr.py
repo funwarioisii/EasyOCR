@@ -1,4 +1,4 @@
-from .detection import get_detector, get_textbox
+from .detection import get_detector, get_textbox, get_textbox_from_image
 from .recognition import get_recognizer, get_text
 from .utils import group_text_box, get_image_list
 import torch
@@ -147,6 +147,24 @@ class Reader(object):
     def readtext(self, file_name, decoder = 'greedy', beamWidth= 5, batch_size = 1, contrast_ths = 0.1,\
                  adjust_contrast = 0.5, filter_ths = 0.003, workers = 1):
         text_box = get_textbox(self.detector, file_name, canvas_size, mag_ratio, text_threshold,\
+                               link_threshold, low_text, poly, self.device)
+        horizontal_list, free_list = group_text_box(text_box, width_ths = 0.5, add_margin = 0.1)
+
+        # should add filter to screen small box out
+
+        image_list, max_width = get_image_list(horizontal_list, free_list, file_name, model_height = imgH)
+
+        ignore_char = ''.join(set(self.character)-self.lang_char-set(number)-set(symbol))
+
+        if self.model_lang in ['chinese', 'japanese', 'korean']: decoder = 'greedy'
+        result = get_text(self.character, imgH, max_width, self.recognizer, self.converter, image_list,\
+                      ignore_char, decoder, beamWidth, batch_size, contrast_ths, adjust_contrast, filter_ths,\
+                      workers, self.device)
+        return result
+
+    def readtext_from_image(self, image, decoder = 'greedy', beamWidth= 5, batch_size = 1,
+         contrast_ths = 0.1,adjust_contrast = 0.5, filter_ths = 0.003, workers = 1):
+        text_box = get_textbox_from_image(self.detector, image, canvas_size, mag_ratio, text_threshold,\
                                link_threshold, low_text, poly, self.device)
         horizontal_list, free_list = group_text_box(text_box, width_ths = 0.5, add_margin = 0.1)
 
